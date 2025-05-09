@@ -13,33 +13,46 @@ type Book = {
 
 export default function SearchPage() {
   const searchParams = useSearchParams();
-  const query = searchParams.get("q") || "";
   const [results, setResults] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!query) return;
+    const fetchData = async () => {
+      const paramsObj: Record<string, string> = {};
+      searchParams.forEach((value, key) => {
+        if (value) paramsObj[key] = value;
+      });
 
-    async function fetchData() {
+      if (Object.keys(paramsObj).length === 0) return;
+
       setLoading(true);
       try {
-        const books = await searchBooks(query);
-        setResults(books);
-      } catch (err) {
-        alert("Erreur de recherche");
+        const data = await searchBooks(paramsObj); // ✅ update
+        setResults(data);
+      } catch {
+        alert("Erreur lors de la récupération des résultats.");
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     fetchData();
-  }, [query]);
+  }, [searchParams]);
+
+  const renderSearchLabel = () => {
+    const keys = Array.from(searchParams.keys());
+    if (keys.length === 0) return "Recherche";
+
+    return keys.map((key) => `${key}="${searchParams.get(key)}"`).join(", ");
+  };
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Résultats pour « {query} »</h1>
+      <h1 className="text-2xl font-bold">
+        Résultats pour {renderSearchLabel()}
+      </h1>
       {loading && <p>Chargement...</p>}
-      {results.length === 0 && !loading && <p>Aucun résultat trouvé.</p>}
+      {!loading && results.length === 0 && <p>Aucun résultat trouvé.</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {results.map((book) => (
           <BookCard

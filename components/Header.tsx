@@ -1,31 +1,78 @@
-'use client';
+"use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { searchBooks } from "@/utils/openLibrary";
+
+type Book = {
+  key: string;
+  title: string;
+  author_name?: string[];
+};
 
 const Header = () => {
   const [query, setQuery] = useState("");
-  const router = useRouter();
+  const [results, setResults] = useState<Book[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim() === "") return;
-    router.push(`/search?q=${encodeURIComponent(query)}`);
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    if (value.length < 3) {
+      setShowDropdown(false);
+      setResults([]);
+      return;
+    }
+
+    try {
+      const data = await searchBooks({ q: value });
+      setResults(data.slice(0, 5));
+      setShowDropdown(true);
+    } catch {
+      setShowDropdown(false);
+      setResults([]);
+    }
   };
 
   return (
-    <header className="bg-gray-100 p-4 shadow">
-      <form onSubmit={handleSearch} className="flex gap-2">
+    <header className="bg-gray-100 p-4 shadow relative z-50">
+      <div className="max-w-xl mx-auto">
         <input
           type="text"
-          placeholder="Recherche rapide"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="flex-grow px-4 py-2 rounded border"
+          onChange={handleChange}
+          placeholder="Recherche rapide..."
+          className="w-full px-4 py-2 rounded border"
         />
-        <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">
-          Rechercher
-        </button>
-      </form>
+        {showDropdown && results.length > 0 && (
+          <ul className="absolute bg-white border rounded w-full mt-1 shadow-lg z-50">
+            {results.map((book) => (
+              <li key={book.key} className="hover:bg-gray-100">
+                <Link
+                  href={`/books/${book.key.split("/").pop()}`}
+                  className="block px-4 py-2"
+                  onClick={() => {
+                    setShowDropdown(false);
+                    setQuery("");
+                  }}
+                >
+                  {book.title}{" "}
+                  <span className="text-sm text-gray-500">
+                    {book.author_name?.join(", ")}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Link
+          href="/advanced-search"
+          className="ml-4 text-sm text-blue-600 hover:underline"
+        >
+          Recherche avancée
+        </Link>
+      </div>
     </header>
   );
 };
