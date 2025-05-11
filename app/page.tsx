@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable  @typescript-eslint/no-explicit-any */
 import { fetchChanges } from "@/utils/openLibrary";
 import { useEffect, useState } from "react";
 import Skeleton from "react-loading-skeleton";
@@ -70,7 +71,7 @@ const fetchWithCache = (() => {
     try {
       localStorage.setItem(url, JSON.stringify(data));
     } catch (e) {
-      // Ignore quota errors
+      console.error("LocalStorage is full or not available", e);
     }
     return data;
   };
@@ -100,7 +101,7 @@ export default function HomePage() {
       const metaObj: Record<string, { title: string; authors: Author[] }> = {};
       for (const key of uniqueKeys) {
         const data = await fetchWithCache(`https://openlibrary.org${key}.json`);
-        let title = data.title || key.split("/").pop(); // fallback sur l'ID si pas de titre
+        const title = data.title || key.split("/").pop(); // fallback sur l'ID si pas de titre
         let authors: Author[] = [];
         if (data.authors) {
           authors = await Promise.all(
@@ -180,10 +181,10 @@ export default function HomePage() {
                       {change.changes
                         .filter((c) => isRelevantKey(c.key))
                         .map((c, idx) => {
-                          let metaEntry = meta[c.key];
-                          let title =
+                          const metaEntry = meta[c.key];
+                          const title =
                             metaEntry?.title || c.key.split("/").pop();
-                          let authors = metaEntry?.authors;
+                          const authors = metaEntry?.authors;
                           let link = null;
                           link = (
                             <Link

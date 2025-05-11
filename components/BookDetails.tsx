@@ -1,3 +1,4 @@
+/* eslint-disable  @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getBookDetails, getWikipediaExtract } from "@/utils/openLibrary";
@@ -316,7 +317,7 @@ const BookDetails = ({ workID }: BookDetailsProps) => {
                 rel="noopener noreferrer"
                 className="text-[color:var(--accent)] hover:text-[color:#1d4ed8] underline transition-colors"
               >
-                Lire l'article complet sur Wikipédia
+                Lire l&apos;article complet sur Wikipédia
               </a>
             )}
             {wikiData.content_urls?.desktop?.revisions && (

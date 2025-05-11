@@ -65,7 +65,7 @@ const Header = () => {
             className="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-light)]"
           />
           {showDropdown && results.length > 0 && (
-            <ul className="absolute top-full left-0 w-full mt-1 border rounded shadow-lg z-50 bg-white">
+                          <ul className="absolute top-full left-0 w-full mt-1 border rounded-md shadow-lg z-50 bg-(--background) overflow-hidden">
               {results.map((book) => (
                 <li key={book.key} className="hover:bg-gray-100">
                   <Link
