@@ -15,8 +15,18 @@ export async function searchBooks(params: Record<string, string>) {
   return data.docs;
 }
 
-export async function getBookDetails(workID: string) {
-  const res = await fetch(`${BASE}/works/${workID}.json`);
+export async function getBookDetails(id: string) {
+  let url = "";
+  if (id.endsWith("W")) {
+    url = `${BASE}/works/${id}.json`;
+  } else if (id.endsWith("M")) {
+    url = `${BASE}/books/${id}.json`;
+  } else {
+    throw new Error("Unknown OpenLibrary ID format");
+  }
+  const res = await fetch(url);
+  if (!res.ok)
+    throw new Error("Erreur lors de la récupération des détails du livre");
   return res.json();
 }
 
@@ -27,7 +37,7 @@ export async function getWikipediaExtract(title: string) {
       title
     )}`
   );
-  if (!res.ok) return null;
+  if (!res.ok) return null; // 404 or other error
   return res.json();
 }
 

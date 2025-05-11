@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import { fetchChanges } from "@/utils/openLibrary";
 import { useEffect, useState } from "react";
 import Skeleton from "react-loading-skeleton";
@@ -18,12 +18,18 @@ type Author = { key: string; name: string };
 
 function kindToFr(kind: string) {
   switch (kind) {
-    case "edit-book": return "Modification de livre";
-    case "add-book": return "Ajout de livre";
-    case "add-cover": return "Ajout de couverture";
-    case "update": return "Mise à jour";
-    case "new-account": return "Nouveau compte";
-    default: return kind;
+    case "edit-book":
+      return "Modification de livre";
+    case "add-book":
+      return "Ajout de livre";
+    case "add-cover":
+      return "Ajout de couverture";
+    case "update":
+      return "Mise à jour";
+    case "new-account":
+      return "Nouveau compte";
+    default:
+      return kind;
   }
 }
 
@@ -31,7 +37,11 @@ function AuthorsLinks({ authors }: { authors: Author[] }) {
   return (
     <span>
       {authors.map((author, idx) => (
-        <Link key={idx} href={`/authors/${author.key}`} className="text-blue-600 underline">
+        <Link
+          key={idx}
+          href={`/authors/${author.key}`}
+          className="text-blue-600 underline"
+        >
           {author.name}
         </Link>
       ))}
@@ -39,9 +49,38 @@ function AuthorsLinks({ authors }: { authors: Author[] }) {
   );
 }
 
+const fetchWithCache = (() => {
+  const memoryCache = new Map<string, any>();
+  return async (url: string) => {
+    // Try memory cache first
+    if (memoryCache.has(url)) return memoryCache.get(url);
+
+    // Try localStorage cache
+    const local = localStorage.getItem(url);
+    if (local) {
+      const data = JSON.parse(local);
+      memoryCache.set(url, data);
+      return data;
+    }
+
+    // Fetch from network
+    const res = await fetch(url);
+    const data = await res.json();
+    memoryCache.set(url, data);
+    try {
+      localStorage.setItem(url, JSON.stringify(data));
+    } catch (e) {
+      // Ignore quota errors
+    }
+    return data;
+  };
+})();
+
 export default function HomePage() {
   const [changes, setChanges] = useState<Change[]>([]);
-  const [meta, setMeta] = useState<Record<string, { title: string; authors: Author[] }>>({});
+  const [meta, setMeta] = useState<
+    Record<string, { title: string; authors: Author[] }>
+  >({});
   const [authorsMeta, setAuthorsMeta] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -54,14 +93,13 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchMeta() {
-      const allKeys = changes.flatMap(c =>
-        (c.changes || []).filter(x => isRelevantKey(x.key)).map(x => x.key)
+      const allKeys = changes.flatMap((c) =>
+        (c.changes || []).filter((x) => isRelevantKey(x.key)).map((x) => x.key)
       );
       const uniqueKeys = Array.from(new Set(allKeys));
       const metaObj: Record<string, { title: string; authors: Author[] }> = {};
       for (const key of uniqueKeys) {
-        const res = await fetch(`https://openlibrary.org${key}.json`);
-        const data = await res.json();
+        const data = await fetchWithCache(`https://openlibrary.org${key}.json`);
         let title = data.title || key.split("/").pop(); // fallback sur l'ID si pas de titre
         let authors: Author[] = [];
         if (data.authors) {
@@ -69,8 +107,9 @@ export default function HomePage() {
             data.authors.map(async (a: any) => {
               const authorKey = a.author?.key || a.key;
               if (!authorKey) return null;
-              const resA = await fetch(`https://openlibrary.org${authorKey}.json`);
-              const dataA = await resA.json();
+              const dataA = await fetchWithCache(
+                `https://openlibrary.org${authorKey}.json`
+              );
               return { key: authorKey, name: dataA.name };
             })
           );
@@ -85,7 +124,9 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchAuthors() {
-      const authorKeys = Array.from(new Set(changes.map(c => c.author?.key).filter(Boolean)));
+      const authorKeys = Array.from(
+        new Set(changes.map((c) => c.author?.key).filter(Boolean))
+      );
       const metaObj: Record<string, string> = {};
       for (const key of authorKeys) {
         try {
@@ -113,43 +154,68 @@ export default function HomePage() {
         {changes.length > 0 ? (
           changes.map((change) => (
             <li key={change.id} className="mb-4 p-4 border rounded-md shadow">
-              <p><strong>Type :</strong> {kindToFr(change.kind)}</p>
+              <p>
+                <strong>Type :</strong> {kindToFr(change.kind)}
+              </p>
               <p>
                 <strong>Auteur :</strong>{" "}
-                {authorsMeta[change.author?.key] || change.author?.key || "Inconnu"}
+                {authorsMeta[change.author?.key] ||
+                  change.author?.key ||
+                  "Inconnu"}
               </p>
-              <p><strong>Commentaire :</strong> {change.comment || "Aucun commentaire"}</p>
-              <p><strong>Date :</strong> {new Date(change.timestamp).toLocaleString()}</p>
-              {change.changes && change.changes.filter(c => isRelevantKey(c.key)).length > 0 && (
-                <div>
-                  <strong>Livres ou œuvres modifiés :</strong>
-                  <ul className="ml-4 list-disc">
-                    {change.changes
-                      .filter(c => isRelevantKey(c.key))
-                      .map((c, idx) => {
-                        let metaEntry = meta[c.key];
-                        let title = metaEntry?.title || c.key.split("/").pop();
-                        let authors = metaEntry?.authors;
-                        let link = null;
-                        if (c.key.startsWith("/books/")) {
-                          link = <Link href={`/books/${c.key.split("/").pop()}`} className="text-blue-600 underline">Livre : {title}</Link>;
-                        } else if (c.key.startsWith("/works/")) {
-                          link = <Link href={`/works/${c.key.split("/").pop()}`} className="text-blue-600 underline">Œuvre : {title}</Link>;
-                        }
-                        return (
-                          <li key={idx}>
-                            {link}
-                            {c.revision && <span className="ml-2 text-xs text-gray-500">révision {c.revision}</span>}
-                            <div className="text-sm text-gray-700">
-                              <span>Auteur(s): </span>
-                              {authors ? <AuthorsLinks authors={authors} /> : <span>Chargement...</span>}
-                            </div>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </div>
-              )}
+              <p>
+                <strong>Commentaire :</strong>{" "}
+                {change.comment || "Aucun commentaire"}
+              </p>
+              <p>
+                <strong>Date :</strong>{" "}
+                {new Date(change.timestamp).toLocaleString()}
+              </p>
+              {change.changes &&
+                change.changes.filter((c) => isRelevantKey(c.key)).length >
+                  0 && (
+                  <div>
+                    <strong>Livres ou œuvres modifiés :</strong>
+                    <ul className="ml-4 list-disc">
+                      {change.changes
+                        .filter((c) => isRelevantKey(c.key))
+                        .map((c, idx) => {
+                          let metaEntry = meta[c.key];
+                          let title =
+                            metaEntry?.title || c.key.split("/").pop();
+                          let authors = metaEntry?.authors;
+                          let link = null;
+                          link = (
+                            <Link
+                              href={`/books/${c.key.split("/").pop()}`}
+                              className="text-blue-600 underline"
+                            >
+                              Livre : {title}
+                            </Link>
+                          );
+
+                          return (
+                            <li key={idx}>
+                              {link}
+                              {c.revision && (
+                                <span className="ml-2 text-xs text-gray-500">
+                                  révision {c.revision}
+                                </span>
+                              )}
+                              <div className="text-sm text-gray-700">
+                                <span>Auteur(s): </span>
+                                {authors ? (
+                                  <AuthorsLinks authors={authors} />
+                                ) : (
+                                  <span>Chargement...</span>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                    </ul>
+                  </div>
+                )}
             </li>
           ))
         ) : (
